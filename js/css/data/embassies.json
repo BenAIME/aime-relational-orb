@@ -1,0 +1,7 @@
+// Sample embassy data (replace with real coordinates)
+const embassies = [
+    { name: "Amazon Embassy", lat: -3.4653, lng: -62.2159 },
+    { name: "Arctic Embassy", lat: 78.2232, lng: 15.6267 },
+    { name: "Sahara Embassy", lat: 23.8069, lng: 11.3956 },
+    // Add 47 more entries...
+];
