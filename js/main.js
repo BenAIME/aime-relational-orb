@@ -194,6 +194,8 @@ window.addEventListener('resize', () => {
 // Animation loop
 function animate() {
     requestAnimationFrame(animate);
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.update();
     renderer.render(scene, camera);
 }
 animate();
