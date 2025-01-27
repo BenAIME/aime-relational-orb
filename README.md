@@ -6,7 +6,7 @@ Below is an example GitHub explainer/README that includes both an introduction t
 
 ## **AIME & IMAGI-NATION Overview**
 
-[AIME (Australian Indigenous Mentoring Experience)](https://aimementoring.com) is a global mentoring organization that builds bridges between unlikely connections—students, educators, communities, and beyond—to spark **imagination** and **opportunity**. Over the next decade, AIME is constructing **IMAGI-NATION**: a digital (and real-world) “nation” where people from all backgrounds come together to solve the world’s toughest challenges, foster equity, and uplift creativity.
+[AIME (Australian Indigenous Mentoring Experience)](https://aimementoring.com) is a global organisation that builds bridges between unlikely connections—students, educators, communities, and beyond—to spark **imagination** and **opportunity**. Over the next decade, AIME is constructing **IMAGI-NATION**: a digital (and real-world) “nation” where people from all backgrounds come together to solve the world’s toughest challenges, foster equity, and uplift creativity.
 
 ### **Why a 3D Map?**
 The **3D interactive globe** in this repository helps embody AIME’s core principle—**that imagination knows no borders**—by visually illustrating:
