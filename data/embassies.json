@@ -1,7 +1,8 @@
 // Sample embassy data (replace with real coordinates)
 const embassies = [
-    { name: "Amazon Embassy", lat: -3.4653, lng: -62.2159 },
-    { name: "Arctic Embassy", lat: 78.2232, lng: 15.6267 },
-    { name: "Sahara Embassy", lat: 23.8069, lng: 11.3956 },
+    { name: "Embassy 1", lat: 40.7128, lng: -74.0060 },
+    { name: "Embassy 2", lat: 51.5074, lng: -0.1278 },
+    { name: "Embassy 3", lat: 35.6762, lng: 139.6503 },
+    { name: "Embassy 4", lat: -33.8688, lng: 151.2093 },
     // Add 47 more entries...
 ];
