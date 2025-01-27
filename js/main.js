@@ -1,13 +1,46 @@
-// At the start of your file, before using the data:
-fetch('data/embassies.json')
-    .then(response => response.json())
-    .then(data => {
-        const embassies = data;
-        addEmbassies(embassies);  // Move this inside the fetch callback
-        createConnections(embassies);  // Move this inside too and pass embassies as parameter
-        // Any other code that uses embassies should go here
-    })
-    .catch(error => console.error('Error loading the embassies data:', error));
+// Add console logging to track execution flow
+console.log('Starting application...');
+
+// Wrap main initialization in a try-catch
+try {
+    // At the start of your file, before using the data:
+    fetch('data/embassies.json')
+        .then(response => {
+            console.log('Fetch response status:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Data loaded successfully:', data);
+            if (!Array.isArray(data)) {
+                throw new Error('Data is not in expected format');
+            }
+            const embassies = data;
+            try {
+                addEmbassies(embassies);
+                console.log('Embassies added successfully');
+                createConnections(embassies);
+                console.log('Connections created successfully');
+            } catch (error) {
+                console.error('Error in processing embassies:', error);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading or processing the embassies data:', error);
+            // Add visible error message on the page
+            const container = document.getElementById('container');
+            if (container) {
+                container.innerHTML = `<div style="color: red; padding: 20px;">
+                    Error loading data: ${error.message}
+                </div>`;
+            }
+        });
+
+} catch (error) {
+    console.error('Critical application error:', error);
+}
 
 // Scene setup
 const scene = new THREE.Scene();
@@ -42,6 +75,9 @@ const globe = createGlobe();
 
 // Add embassy nodes
 const addEmbassies = (embassies) => {
+    if (!embassies || !Array.isArray(embassies)) {
+        throw new Error('Invalid embassies data provided to addEmbassies');
+    }
     embassies.forEach(embassy => {
         const phi = (90 - embassy.lat) * (Math.PI / 180);
         const theta = (embassy.lng + 180) * (Math.PI / 180);
@@ -66,6 +102,9 @@ const addEmbassies = (embassies) => {
 
 // Create connections
 const createConnections = (embassies) => {
+    if (!embassies || !Array.isArray(embassies)) {
+        throw new Error('Invalid embassies data provided to createConnections');
+    }
     const material = new THREE.LineBasicMaterial({ 
         color: 0x4CAF50,
         transparent: true,
