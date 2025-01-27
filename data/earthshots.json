@@ -1,0 +1,12 @@
+[
+    {"name": "Amazon Rainforest", "lat": -3.4653, "lng": -62.2159, "type": "Deforestation"},
+    {"name": "Great Barrier Reef", "lat": -18.2871, "lng": 147.6992, "type": "Ocean"},
+    {"name": "Sahara Desert", "lat": 23.4162, "lng": 25.6628, "type": "Climate"},
+    {"name": "Arctic Ice Sheet", "lat": 80.7555, "lng": -47.3488, "type": "Ice"},
+    {"name": "Congo Basin", "lat": -0.7264, "lng": 23.6562, "type": "Biodiversity"},
+    {"name": "Ganges Delta", "lat": 21.9497, "lng": 89.1833, "type": "Water"},
+    {"name": "Indonesian Rainforest", "lat": -0.7893, "lng": 113.9213, "type": "Deforestation"},
+    {"name": "Greenland Ice Sheet", "lat": 77.6192, "lng": -42.8279, "type": "Ice"},
+    {"name": "Coral Triangle", "lat": -2.8852, "lng": 123.9211, "type": "Ocean"},
+    {"name": "Siberian Permafrost", "lat": 67.4894, "lng": 130.9180, "type": "Climate"}
+] 
