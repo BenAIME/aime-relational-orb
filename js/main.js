@@ -1,47 +1,6 @@
 // Add console logging to track execution flow
 console.log('Starting application...');
 
-// Wrap main initialization in a try-catch
-try {
-    // At the start of your file, before using the data:
-    fetch('data/embassies.json')
-        .then(response => {
-            console.log('Fetch response status:', response.status);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            console.log('Data loaded successfully:', data);
-            if (!Array.isArray(data)) {
-                throw new Error('Data is not in expected format');
-            }
-            const embassies = data;
-            try {
-                addEmbassies(embassies);
-                console.log('Embassies added successfully');
-                createConnections(embassies);
-                console.log('Connections created successfully');
-            } catch (error) {
-                console.error('Error in processing embassies:', error);
-            }
-        })
-        .catch(error => {
-            console.error('Error loading or processing the embassies data:', error);
-            // Add visible error message on the page
-            const container = document.getElementById('container');
-            if (container) {
-                container.innerHTML = `<div style="color: red; padding: 20px;">
-                    Error loading data: ${error.message}
-                </div>`;
-            }
-        });
-
-} catch (error) {
-    console.error('Critical application error:', error);
-}
-
 // Scene setup
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
@@ -157,6 +116,47 @@ gsap.to(globe.rotation, {
     repeat: -1,
     ease: "none"
 });
+
+// Wrap main initialization in a try-catch
+try {
+    // Load data first, then initialize everything else
+    fetch('data/embassies.json')
+        .then(response => {
+            console.log('Fetch response status:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Data loaded successfully:', data);
+            if (!Array.isArray(data)) {
+                throw new Error('Data is not in expected format');
+            }
+            const embassies = data;
+            try {
+                addEmbassies(embassies);
+                console.log('Embassies added successfully');
+                createConnections(embassies);
+                console.log('Connections created successfully');
+            } catch (error) {
+                console.error('Error in processing embassies:', error);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading or processing the embassies data:', error);
+            // Add visible error message on the page
+            const container = document.getElementById('container');
+            if (container) {
+                container.innerHTML = `<div style="color: red; padding: 20px;">
+                    Error loading data: ${error.message}
+                </div>`;
+            }
+        });
+
+} catch (error) {
+    console.error('Critical application error:', error);
+}
 
 // Interaction
 const raycaster = new THREE.Raycaster();
