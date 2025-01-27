@@ -368,7 +368,6 @@ const createEmbassyMarkers = (scene, radius = 102) => {
     const markersGroup = new THREE.Group();
     
     MAJOR_CITIES.forEach(city => {
-        // Create marker
         const markerGeometry = new THREE.SphereGeometry(1, 16, 16);
         const markerMaterial = new THREE.MeshPhongMaterial({
             color: 0xff3333,
@@ -382,48 +381,57 @@ const createEmbassyMarkers = (scene, radius = 102) => {
         const position = latLonToVector3(city.lat, city.lon, radius);
         marker.position.copy(position);
         
-        // Set embassy data directly on the marker
-        marker.userData.embassy = {
-            name: city.name,
-            type: city.type,
-            region: city.region,
-            focus: city.focus
-        };
+        // Add hover effect
+        marker.userData.originalScale = marker.scale.clone();
+        marker.userData.hovered = false;
+        
+        // Add to raycaster targets
+        if (!window.raycasterTargets) {
+            window.raycasterTargets = [];
+        }
+        window.raycasterTargets.push(marker);
         
         markersGroup.add(marker);
-        
-        // Create pulse (without embassy data)
-        const pulse = new THREE.Mesh(
-            new THREE.SphereGeometry(1.2, 16, 16),
-            new THREE.MeshBasicMaterial({
-                color: 0xff3333,
-                transparent: true,
-                opacity: 0.4
-            })
-        );
-        pulse.position.copy(position);
-        markersGroup.add(pulse);
-        
-        // Animate pulse
-        const scalePulse = () => {
-            pulse.scale.set(1, 1, 1);
-            new TWEEN.Tween(pulse.scale)
-                .to({ x: 2, y: 2, z: 2 }, 2000)
-                .easing(TWEEN.Easing.Quadratic.Out)
-                .start()
-                .onComplete(() => {
-                    new TWEEN.Tween(pulse.scale)
-                        .to({ x: 1, y: 1, z: 1 }, 0)
-                        .start()
-                        .onComplete(scalePulse);
-                });
-        };
-        scalePulse();
     });
     
-    scene.add(markersGroup);
     return markersGroup;
 };
+
+// Add mouse interaction
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+document.addEventListener('mousemove', (event) => {
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    
+    raycaster.setFromCamera(mouse, camera);
+    
+    const intersects = raycaster.intersectObjects(window.raycasterTargets || []);
+    
+    window.raycasterTargets.forEach(target => {
+        if (target.userData.hovered) {
+            new TWEEN.Tween(target.scale)
+                .to(target.userData.originalScale, 200)
+                .easing(TWEEN.Easing.Quadratic.Out)
+                .start();
+            target.userData.hovered = false;
+        }
+    });
+    
+    if (intersects.length > 0) {
+        const target = intersects[0].object;
+        new TWEEN.Tween(target.scale)
+            .to({
+                x: target.userData.originalScale.x * 2,
+                y: target.userData.originalScale.y * 2,
+                z: target.userData.originalScale.z * 2
+            }, 200)
+            .easing(TWEEN.Easing.Quadratic.Out)
+            .start();
+        target.userData.hovered = true;
+    }
+});
 
 // Add function to create Earth Shot markers
 const createEarthShotMarkers = (scene, radius = 102) => {
@@ -712,6 +720,36 @@ const initBasicScene = async () => {
         createControlPanel();
         
         createTableButton();
+        
+        // Add this after scene creation
+        const atmosphereEffect = () => {
+            const atmosphere = new THREE.Mesh(
+                new THREE.SphereGeometry(102.5, 50, 50),
+                new THREE.ShaderMaterial({
+                    vertexShader: `
+                        varying vec3 vNormal;
+                        void main() {
+                            vNormal = normalize(normalMatrix * normal);
+                            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                        }
+                    `,
+                    fragmentShader: `
+                        varying vec3 vNormal;
+                        void main() {
+                            float intensity = pow(0.7 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.0);
+                            gl_FragColor = vec4(0.3, 0.6, 1.0, 1.0) * intensity;
+                        }
+                    `,
+                    blending: THREE.AdditiveBlending,
+                    side: THREE.BackSide
+                })
+            );
+            scene.add(atmosphere);
+        };
+        
+        addShootingStars();
+        
+        createGRPButton();
         
     } catch (error) {
         console.error('Scene initialization failed:', error);
@@ -1950,3 +1988,620 @@ const createTableButton = () => {
     document.body.appendChild(button);
     document.body.appendChild(overlay);
 };
+
+// Add this after scene creation
+const addShootingStars = () => {
+    const stars = [];
+    const starCount = 20;
+    
+    for(let i = 0; i < starCount; i++) {
+        const star = new THREE.Mesh(
+            new THREE.SphereGeometry(0.5, 8, 8),
+            new THREE.MeshBasicMaterial({ color: 0xffffff })
+        );
+        
+        // Random position far from globe
+        star.position.set(
+            Math.random() * 1000 - 500,
+            Math.random() * 1000 - 500,
+            Math.random() * 1000 - 500
+        );
+        
+        stars.push(star);
+        scene.add(star);
+    }
+    
+    // Animate stars
+    const animateStars = () => {
+        stars.forEach(star => {
+            star.position.x -= 2;
+            star.position.y -= 2;
+            star.position.z -= 2;
+            
+            if(star.position.x < -500) {
+                star.position.set(500, 
+                    Math.random() * 1000 - 500,
+                    Math.random() * 1000 - 500);
+            }
+        });
+    };
+    
+    if (!window.animationFunctions) {
+        window.animationFunctions = [];
+    }
+    window.animationFunctions.push(animateStars);
+};
+
+// Create GRP button function
+const createGRPButton = () => {
+    const button = document.createElement('div');
+    button.style.cssText = 'position: absolute; bottom: 20px; left: 20px; background: rgba(0, 0, 0, 0.7); color: white; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-family: Arial, sans-serif; z-index: 1000; border: 1px solid rgba(255, 255, 255, 0.3)';
+    button.textContent = 'GRP Impact';
+    
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.95); display: none; z-index: 2000; overflow: auto';
+    
+    const canvas = document.createElement('canvas');
+    canvas.style.cssText = 'position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%)';
+    overlay.appendChild(canvas);
+    
+    const closeButton = document.createElement('div');
+    closeButton.style.cssText = 'position: absolute; top: 20px; right: 20px; color: white; cursor: pointer; font-size: 24px; z-index: 2001';
+    closeButton.textContent = '×';
+    overlay.appendChild(closeButton);
+    
+    const visualizeGRP = () => {
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth * 0.8;
+        canvas.height = window.innerHeight * 0.8;
+        
+        // Animation variables
+        let time = 0;
+        let nodes = [];
+        const nodeCount = 30; // Increased from 20 to 30 for more opportunities
+        
+        // Create nodes with slower movement
+        for(let i = 0; i < nodeCount; i++) {
+            nodes.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                vx: (Math.random() - 0.5) * 1, // Reduced speed
+                vy: (Math.random() - 0.5) * 1, // Reduced speed
+                connections: new Set()
+            });
+        }
+        
+        const animate = () => {
+            ctx.fillStyle = 'black';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            time += 0.01;
+            
+            // Update and draw nodes
+            nodes.forEach((node, i) => {
+                // Update position with smoother movement
+                node.x += node.vx;
+                node.y += node.vy;
+                
+                // Bounce off walls
+                if(node.x < 0 || node.x > canvas.width) node.vx *= -1;
+                if(node.y < 0 || node.y > canvas.height) node.vy *= -1;
+                
+                // Draw node
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, 5, 0, Math.PI * 2);
+                ctx.fillStyle = '#4287f5';
+                ctx.fill();
+                
+                // Draw connections with increased range
+                nodes.forEach((otherNode, j) => {
+                    if(i === j) return;
+                    
+                    const dx = otherNode.x - node.x;
+                    const dy = otherNode.y - node.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if(distance < 200) { // Increased connection range
+                        ctx.beginPath();
+                        ctx.moveTo(node.x, node.y);
+                        ctx.lineTo(otherNode.x, otherNode.y);
+                        ctx.strokeStyle = `rgba(66, 135, 245, ${1 - distance/200})`;
+                        ctx.stroke();
+                        
+                        node.connections.add(j);
+                    } else {
+                        node.connections.delete(j);
+                    }
+                });
+            });
+            
+            // Draw UNCx5 groups with more visibility
+            for(let i = 0; i < nodes.length - 4; i++) {
+                const group = [nodes[i]];
+                
+                // Find 4 more connected nodes with relaxed conditions
+                for(let j = i + 1; j < nodes.length && group.length < 5; j++) {
+                    const allConnected = group.every(node => {
+                        const dx = nodes[j].x - node.x;
+                        const dy = nodes[j].y - node.y;
+                        return Math.sqrt(dx * dx + dy * dy) < 250; // Increased group formation range
+                    });
+                    
+                    if(allConnected) {
+                        group.push(nodes[j]);
+                    }
+                }
+                
+                // Draw group if we found 5 connected nodes
+                if(group.length === 5) {
+                    ctx.beginPath();
+                    ctx.moveTo(group[0].x, group[0].y);
+                    group.forEach(node => {
+                        ctx.lineTo(node.x, node.y);
+                    });
+                    ctx.closePath();
+                    ctx.fillStyle = 'rgba(245, 66, 170, 0.2)'; // Increased opacity
+                    ctx.fill();
+                    ctx.strokeStyle = 'rgba(245, 66, 170, 0.8)'; // Increased line visibility
+                    ctx.lineWidth = 2; // Thicker lines
+                    ctx.stroke();
+                    ctx.lineWidth = 1; // Reset line width
+                }
+            }
+            
+            // Draw info panel
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            ctx.fillRect(20, 20, 360, 200);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.strokeRect(20, 20, 360, 200);
+            
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 16px Arial';
+            ctx.fillText('GRP Components Visualization', 40, 50);
+            
+            ctx.font = '14px Arial';
+            ctx.fillStyle = '#4287f5';
+            ctx.fillText('Blue Lines: Bilateral Relations', 40, 80);
+            ctx.fillStyle = 'white';
+            ctx.fillText('Value = n(n-1)/2 × $10,000 per relation', 60, 100);
+            
+            ctx.fillStyle = '#f542aa';
+            ctx.fillText('Pink Areas: UNCx5 Groups', 40, 130);
+            ctx.fillStyle = 'white';
+            ctx.fillText('Value = C(n,5) × $100,000 per group', 60, 150);
+            
+            ctx.fillStyle = '#666';
+            ctx.fillText('Watch how groups form and dissolve as', 40, 180);
+            ctx.fillText('nodes move and create new connections', 40, 200);
+            
+            requestAnimationFrame(animate);
+        };
+        
+        animate();
+    };
+    
+    button.onclick = () => {
+        overlay.style.display = 'block';
+        visualizeGRP();
+    };
+    
+    closeButton.onclick = () => {
+        overlay.style.display = 'none';
+    };
+    
+    document.body.appendChild(button);
+    document.body.appendChild(overlay);
+
+    // Add explanation panel system
+    const addExplanations = (overlay) => {
+        // Create explanation buttons container
+        const buttonContainer = document.createElement('div');
+        buttonContainer.style.cssText = `
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            max-width: calc(100% - 100px); /* Leave space for close button */
+            z-index: 2001;
+        `;
+
+        // Create and style explanation panel
+        const panel = document.createElement('div');
+        panel.style.cssText = `
+            position: absolute;
+            top: 70px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            color: white;
+            font-family: Arial, sans-serif;
+            width: 300px;
+            display: none;
+            z-index: 2001;
+        `;
+
+        // Create explanation buttons
+        const explanations = [
+            {
+                id: 'overview',
+                icon: '🌐',
+                title: 'Overview',
+                content: `
+                    <h3>Understanding GRP (Gross Relational Product)</h3>
+                    <p>GRP measures the total value created through network relationships and collaborative groups. 
+                    Watch the dynamic visualization to see how value emerges from:</p>
+                    <ul>
+                        <li>Bilateral connections between participants (blue lines)</li>
+                        <li>Formation of UNCx5 groups (pink areas)</li>
+                    </ul>
+                    <p>The more connections and groups form, the higher the network's total value becomes.</p>
+                `
+            },
+            {
+                id: 'bilateral',
+                icon: '🔗',
+                title: 'Connections',
+                content: `
+                    <h3>Blue Lines: Network Connections</h3>
+                    <p>Each moving dot represents a network participant. When dots come close enough, they form 
+                    blue connections representing bilateral relationships.</p>
+                    <p><strong>Value Calculation:</strong></p>
+                    <ul>
+                        <li>Each connection is worth $10,000</li>
+                        <li>Total possible connections = n(n-1)/2</li>
+                        <li>Example: 20 participants can form up to 190 connections</li>
+                        <li>Maximum bilateral value = 190 × $10,000 = $1.9M</li>
+                    </ul>
+                `
+            },
+            {
+                id: 'uncx5',
+                icon: '⭐',
+                title: 'UNCx5',
+                content: `
+                    <h3>Pink Areas: Collaborative Groups</h3>
+                    <p>When exactly 5 participants connect, they form a UNCx5 group, shown as a pink pentagon.</p>
+                    <p><strong>Group Dynamics:</strong></p>
+                    <ul>
+                        <li>Each UNCx5 group is worth $100,000</li>
+                        <li>Groups form and dissolve as participants move</li>
+                        <li>Multiple groups can exist simultaneously</li>
+                        <li>The same participant can be part of multiple groups</li>
+                    </ul>
+                `
+            },
+            {
+                id: 'formula',
+                icon: '📊',
+                title: 'Formula',
+                content: `
+                    <h3>GRP Value Calculation</h3>
+                    <p><strong>Total GRP = Bilateral Value + Group Value</strong></p>
+                    <p>Where:</p>
+                    <ul>
+                        <li>Bilateral Value = [n(n-1)/2] × $10,000</li>
+                        <li>Group Value = [C(n,5)] × $100,000</li>
+                        <li>n = number of participants</li>
+                        <li>C(n,5) = number of possible groups of 5</li>
+                    </ul>
+                    <p>As the network grows, group value tends to outpace bilateral value.</p>
+                `
+            },
+            {
+                id: 'scenarios',
+                icon: '🎯',
+                title: 'Examples',
+                content: `
+                    <h3>Real-World GRP Scenarios</h3>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <h4 style="color: #99ccff;">Scenario 1: University Network</h4>
+                        <p><strong>Setting:</strong> 20 universities collaborating globally</p>
+                        <ul>
+                            <li>190 bilateral connections × $10,000 = $1.9M in relationship value</li>
+                            <li>15,504 possible UNCx5 groups × $100,000 = $1.55B in group value</li>
+                            <li>Total GRP potential: $1.55B</li>
+                        </ul>
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <h4 style="color: #99ff99;">Scenario 2: Startup Ecosystem</h4>
+                        <p><strong>Setting:</strong> 50 tech startups in an innovation hub</p>
+                        <ul>
+                            <li>1,225 bilateral connections × $10,000 = $12.25M</li>
+                            <li>2,118,760 possible UNCx5 groups × $100,000 = $211.88B</li>
+                            <li>Shows how group value grows exponentially!</li>
+                        </ul>
+                    </div>
+                `
+            },
+            {
+                id: 'roleplay',
+                icon: '🎭',
+                title: 'Role Play',
+                content: `
+                    <h3>GRP in Action: Role Play Scenarios</h3>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <h4 style="color: #99ccff;">Scenario A: Global Education Initiative</h4>
+                        <p><strong>Players:</strong></p>
+                        <ul>
+                            <li>University A (Australia) - Digital Learning Expert</li>
+                            <li>University B (Brazil) - Content Creation</li>
+                            <li>University C (Canada) - Research Lead</li>
+                            <li>University D (Denmark) - Technology Platform</li>
+                            <li>University E (Egypt) - Local Implementation</li>
+                        </ul>
+                        <p><strong>Value Created:</strong></p>
+                        <ul>
+                            <li>10 bilateral connections × $10,000 = $100,000</li>
+                            <li>1 UNCx5 group × $100,000 = $100,000</li>
+                            <li>Total Value: $200,000</li>
+                        </ul>
+                    </div>
+                `
+            },
+            {
+                id: 'value',
+                icon: '💰',
+                title: 'Value',
+                content: `
+                    <h3>Understanding Value Creation in GRP</h3>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <h4 style="color: #99ccff;">Bilateral Relations ($10,000 each)</h4>
+                        <p><strong>Value Sources:</strong></p>
+                        <ul>
+                            <li>Knowledge sharing between institutions</li>
+                            <li>Student exchange programs</li>
+                            <li>Joint research initiatives</li>
+                            <li>Resource sharing agreements</li>
+                            <li>Best practice exchanges</li>
+                        </ul>
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <h4 style="color: #ff9999;">UNCx5 Groups ($100,000 each)</h4>
+                        <p><strong>Value Multipliers:</strong></p>
+                        <ul>
+                            <li>Multi-party research projects</li>
+                            <li>Global innovation programs</li>
+                            <li>Shared technology platforms</li>
+                            <li>Joint funding initiatives</li>
+                            <li>Collaborative problem-solving</li>
+                        </ul>
+                    </div>
+                `
+            },
+            {
+                id: 'impact',
+                icon: '🌟',
+                title: 'Impact',
+                content: `
+                    <h3>Network Impact Examples</h3>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <h4 style="color: #99ccff;">Environmental Innovation</h4>
+                        <p><strong>UNCx5 Example:</strong> Climate Action Coalition</p>
+                        <ul>
+                            <li>Research Institution: Climate Science</li>
+                            <li>Tech Company: Carbon Tracking</li>
+                            <li>Government Agency: Policy Framework</li>
+                            <li>NGO: Community Engagement</li>
+                            <li>Industry Partner: Implementation</li>
+                        </ul>
+                        <p>Value amplified through real-world environmental impact</p>
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <h4 style="color: #99ff99;">Social Innovation</h4>
+                        <p><strong>Impact Areas:</strong></p>
+                        <ul>
+                            <li>Education Access Programs</li>
+                            <li>Healthcare Initiatives</li>
+                            <li>Cultural Preservation</li>
+                            <li>Community Development</li>
+                            <li>Economic Empowerment</li>
+                        </ul>
+                    </div>
+                `
+            },
+            {
+                id: 'growth',
+                icon: '📈',
+                title: 'Growth',
+                content: `
+                    <h3>Network Growth Dynamics</h3>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <h4 style="color: #ff9999;">Growth Stages</h4>
+                        <ul>
+                            <li>Stage 1: Initial Connections (1-10 nodes)</li>
+                            <li>Stage 2: Network Formation (11-25 nodes)</li>
+                            <li>Stage 3: Group Emergence (26-50 nodes)</li>
+                            <li>Stage 4: Network Maturity (51+ nodes)</li>
+                        </ul>
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <h4 style="color: #99ccff;">Value Acceleration</h4>
+                        <p>As networks grow, value increases exponentially:</p>
+                        <ul>
+                            <li>10 nodes: ~$450K potential</li>
+                            <li>20 nodes: ~$1.9M potential</li>
+                            <li>50 nodes: ~$12.25M potential</li>
+                            <li>100 nodes: ~$49.5M potential</li>
+                        </ul>
+                    </div>
+                `
+            },
+            {
+                id: 'sectors',
+                icon: '🏛️',
+                title: 'Sectors',
+                content: `
+                    <h3>Sector-Specific Applications</h3>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <h4 style="color: #99ccff;">Education Sector</h4>
+                        <ul>
+                            <li>Research Collaborations</li>
+                            <li>Student Exchange Networks</li>
+                            <li>Global Learning Platforms</li>
+                            <li>Academic Partnerships</li>
+                            <li>Innovation Hubs</li>
+                        </ul>
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <h4 style="color: #99ff99;">Cultural Sector</h4>
+                        <ul>
+                            <li>Museum Networks</li>
+                            <li>Arts Collaborations</li>
+                            <li>Heritage Preservation</li>
+                            <li>Cultural Exchange Programs</li>
+                            <li>Creative Industries</li>
+                        </ul>
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <h4 style="color: #ff9999;">Innovation Sector</h4>
+                        <ul>
+                            <li>Technology Hubs</li>
+                            <li>Research Networks</li>
+                            <li>Startup Ecosystems</li>
+                            <li>Industry Partnerships</li>
+                            <li>Innovation Districts</li>
+                        </ul>
+                    </div>
+                `
+            },
+            {
+                id: 'strategy',
+                icon: '🎯',
+                title: 'Strategy',
+                content: `
+                    <h3>Strategic Network Building</h3>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <h4 style="color: #99ccff;">Network Formation</h4>
+                        <p><strong>Key Steps:</strong></p>
+                        <ul>
+                            <li>Identify Strategic Partners</li>
+                            <li>Build Initial Connections</li>
+                            <li>Foster Group Formation</li>
+                            <li>Maintain Active Engagement</li>
+                            <li>Scale Thoughtfully</li>
+                        </ul>
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <h4 style="color: #99ff99;">Success Factors</h4>
+                        <ul>
+                            <li>Clear Shared Purpose</li>
+                            <li>Active Participation</li>
+                            <li>Resource Sharing</li>
+                            <li>Regular Communication</li>
+                            <li>Measured Outcomes</li>
+                        </ul>
+                    </div>
+                `
+            },
+            {
+                id: 'future',
+                icon: '🚀',
+                title: 'Future',
+                content: `
+                    <h3>Future of Network Value</h3>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <h4 style="color: #99ccff;">Emerging Trends</h4>
+                        <ul>
+                            <li>Digital Transformation</li>
+                            <li>Global Connectivity</li>
+                            <li>AI Integration</li>
+                            <li>Sustainable Networks</li>
+                            <li>Cross-Sector Collaboration</li>
+                        </ul>
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <h4 style="color: #99ff99;">Innovation Potential</h4>
+                        <p><strong>Future Applications:</strong></p>
+                        <ul>
+                            <li>Virtual Reality Collaborations</li>
+                            <li>AI-Enhanced Networks</li>
+                            <li>Global Problem Solving</li>
+                            <li>Sustainable Development</li>
+                            <li>Cultural Innovation</li>
+                        </ul>
+                    </div>
+                `
+            }
+        ];
+
+        // Create buttons with white text
+        explanations.forEach(exp => {
+            const button = document.createElement('div');
+            button.style.cssText = `
+                background: rgba(255, 255, 255, 0.1);
+                padding: 8px 15px;
+                border-radius: 5px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 5px;
+                transition: background 0.3s;
+                color: white;  /* Added white text color */
+            `;
+            button.innerHTML = `${exp.icon} ${exp.title}`;
+            
+            button.onmouseenter = () => {
+                button.style.background = 'rgba(255, 255, 255, 0.2)';
+            };
+            button.onmouseleave = () => {
+                button.style.background = 'rgba(255, 255, 255, 0.1)';
+            };
+            
+            button.onclick = (e) => {
+                e.stopPropagation(); // Prevent click from bubbling to overlay
+                panel.innerHTML = exp.content;
+                panel.style.display = 'block';
+            };
+            
+            buttonContainer.appendChild(button);
+        });
+
+        // Close panel when clicking outside
+        overlay.addEventListener('click', (e) => {
+            if (!panel.contains(e.target) && !buttonContainer.contains(e.target)) {
+                panel.style.display = 'none';
+            }
+        });
+
+        // Style the content
+        panel.innerHTML += `
+            <style>
+                h3 { color: #4287f5; margin-top: 0; }
+                ul { padding-left: 20px; }
+                li { margin: 5px 0; }
+                p { line-height: 1.4; }
+            </style>
+        `;
+
+        overlay.appendChild(buttonContainer);
+        overlay.appendChild(panel);
+    };
+
+    // Add explanations when creating the visualization
+    addExplanations(overlay);
+};
+
+// Make sure this is called in your initialization
+window.addEventListener('load', () => {
+    createGRPButton();
+});
