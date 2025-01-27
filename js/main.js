@@ -120,7 +120,7 @@ gsap.to(globe.rotation, {
 // Wrap main initialization in a try-catch
 try {
     // Load data first, then initialize everything else
-    fetch('data/embassies.json')
+    fetch('data/locations.json')
         .then(response => {
             console.log('Fetch response status:', response.status);
             if (!response.ok) {
