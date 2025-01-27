@@ -1,7 +1,3 @@
-Below is an example GitHub explainer/README that includes both an introduction to **AIME** and **IMAGI-NATION**, and a detailed breakdown of how the 3D codebase works to visualize their core philosophy and mission.
-
----
-
 # **AIME & IMAGI-NATION: 3D Interactive Globe**
 
 ## **AIME & IMAGI-NATION Overview**
@@ -107,9 +103,7 @@ We welcome contributions that expand or refine this interactive map—adding new
 
 ## **License**
 
-*(Include your preferred license text here, e.g., MIT License.)*
-
----
+**Open source**---
 
 ### **Stay Curious & Creative**
 
