@@ -1,3 +1,14 @@
+// At the start of your file, before using the data:
+fetch('data/embassies.json')
+    .then(response => response.json())
+    .then(data => {
+        const embassies = data;
+        addEmbassies(embassies);  // Move this inside the fetch callback
+        createConnections(embassies);  // Move this inside too and pass embassies as parameter
+        // Any other code that uses embassies should go here
+    })
+    .catch(error => console.error('Error loading the embassies data:', error));
+
 // Scene setup
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
@@ -30,7 +41,7 @@ const createGlobe = () => {
 const globe = createGlobe();
 
 // Add embassy nodes
-const addEmbassies = () => {
+const addEmbassies = (embassies) => {
     embassies.forEach(embassy => {
         const phi = (90 - embassy.lat) * (Math.PI / 180);
         const theta = (embassy.lng + 180) * (Math.PI / 180);
@@ -53,10 +64,8 @@ const addEmbassies = () => {
     });
 };
 
-addEmbassies();
-
 // Create connections
-const createConnections = () => {
+const createConnections = (embassies) => {
     const material = new THREE.LineBasicMaterial({ 
         color: 0x4CAF50,
         transparent: true,
@@ -98,8 +107,6 @@ const getPosition = (embassy) => {
         radius * Math.sin(phi) * Math.sin(theta)
     );
 };
-
-createConnections();
 
 // Camera position
 camera.position.z = 15;
